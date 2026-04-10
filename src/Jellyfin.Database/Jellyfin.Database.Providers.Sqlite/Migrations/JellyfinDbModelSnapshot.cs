@@ -15,7 +15,7 @@ namespace Jellyfin.Server.Implementations.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
             modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.AccessSchedule", b =>
                 {
@@ -617,6 +617,64 @@ namespace Jellyfin.Server.Implementations.Migrations
                         .IsUnique();
 
                     b.ToTable("DisplayPreferences");
+
+                    b.HasAnnotation("Sqlite:UseSqlReturningClause", false);
+                });
+
+            modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.ExternalProviderMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AccessToken")
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DateModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ForceExternalAuth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastRefreshAttempt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderUserId")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefreshToken")
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("TokenExpiryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProviderName", "ProviderUserId")
+                        .IsUnique();
+
+                    b.ToTable("ExternalProviderMappings");
 
                     b.HasAnnotation("Sqlite:UseSqlReturningClause", false);
                 });
@@ -1524,6 +1582,17 @@ namespace Jellyfin.Server.Implementations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.ExternalProviderMapping", b =>
+                {
+                    b.HasOne("Jellyfin.Database.Implementations.Entities.User", "User")
+                        .WithMany("ExternalProviderMappings")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.HomeSection", b =>
                 {
                     b.HasOne("Jellyfin.Database.Implementations.Entities.DisplayPreferences", null)
@@ -1703,6 +1772,8 @@ namespace Jellyfin.Server.Implementations.Migrations
                     b.Navigation("AccessSchedules");
 
                     b.Navigation("DisplayPreferences");
+
+                    b.Navigation("ExternalProviderMappings");
 
                     b.Navigation("ItemDisplayPreferences");
 

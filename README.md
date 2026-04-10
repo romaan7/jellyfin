@@ -3,6 +3,84 @@
 
 ---
 
+> **NOTICE: This is a modified fork of the official Jellyfin project. This fork is an entirely vibe-coded project (built with AI assistance) and may need extensive testing before production use. Use at your own risk.**
+
+## SSO / External Authentication Modifications
+
+This fork adds comprehensive Single Sign-On (SSO) and external authentication support to Jellyfin. The following changes have been made to the upstream codebase:
+
+### New Projects & Assemblies
+
+- **`Jellyfin.Plugin.SSO`** -- A new plugin project providing the SSO infrastructure:
+  - **Google OAuth Provider** (`Providers/GoogleOAuthProvider.cs`) -- Full Google OAuth2 popup-based login flow
+  - **Generic OIDC Provider** (`Providers/GenericOIDCProvider.cs`) -- Configurable OpenID Connect provider supporting any OIDC-compliant identity provider
+  - **OIDC Auto-Discovery** (`Discovery/OidcDiscoveryService.cs`) -- Automatic endpoint discovery via `/.well-known/openid-configuration` with 1-hour caching
+  - **PKCE Security** (`Security/PkceHelper.cs`) -- Proof Key for Code Exchange (S256) for both Google and OIDC flows
+  - **Nonce Validation** -- OIDC nonce generation and id_token validation to prevent replay attacks
+  - **Token Refresh** -- Background `TokenRefreshService` that automatically refreshes expiring OAuth tokens
+  - **Role Mapping** (`Configuration/RoleMapping.cs`) -- Map OIDC claims/groups to Jellyfin permissions (e.g., "groups" claim "admins" -> IsAdministrator)
+  - **Plugin Configuration Page** (`Configuration/config.html`) -- Admin UI for configuring Google OAuth, OIDC providers, role mappings, issuer auto-discovery, and provider icons
+  - **Plugin Service Registration** (`PluginServiceRegistrator.cs`) -- DI registration for all SSO services
+
+### New API Endpoints (`Jellyfin.Api/Controllers/ExternalAuthController.cs`)
+
+- `GET /Auth/SSO/Providers` -- List available SSO providers (public, no auth required)
+- `POST /Auth/SSO/{provider}/Initiate` -- Start SSO authentication flow (returns authorization URL)
+- `GET /Auth/SSO/{provider}/Callback` -- OAuth callback handler (processes code exchange, user lookup/creation, token storage)
+- `GET /Auth/SSO/Mappings` -- Get all external provider mappings (admin)
+- `GET /Auth/SSO/Mappings/{userId}` -- Get mappings for a specific user (admin)
+- `DELETE /Auth/SSO/{provider}/UnlinkUser/{userId}` -- Unlink a user from an SSO provider (admin)
+- `PATCH /Auth/SSO/{provider}/Mapping/{userId}/ForceAuth` -- Toggle force-SSO-only login for a user (admin)
+
+### New API DTOs (`Jellyfin.Api/Models/UserDtos/`)
+
+- `ExternalAuthInitiateRequest.cs` -- Request model for SSO initiation (callback URL, device info)
+- `ExternalAuthInitiationDto.cs` -- Response with authorization URL and state
+- `ExternalProviderInfoDto.cs` -- Provider info with name, icon type, and icon URL
+- `ExternalProviderMappingDto.cs` -- User-provider mapping with tokens, dates, and force-auth flag
+
+### New Interfaces & Models (`MediaBrowser.Controller/Authentication/`)
+
+- `IExternalAuthenticationProvider.cs` -- Interface for SSO providers (initiate, complete, refresh, user info, role mappings, icons)
+- `IExternalAuthService.cs` -- Interface for managing external provider mappings in the database
+- `ExternalAuthInitiationResult.cs` -- Result from initiating SSO (auth URL, state, metadata)
+- `ExternalAuthTokenResult.cs` -- Token exchange result (access token, refresh token, expiry, user info)
+- `ExternalUserInfo.cs` -- External user profile (ID, email, name, claims)
+- `ExternalRoleMapping.cs` -- Role mapping model (claim name, claim value, permission, grant flag)
+
+### New Service Implementation (`Jellyfin.Server.Implementations/Authentication/`)
+
+- `ExternalAuthService.cs` -- Database-backed service for CRUD operations on external provider mappings
+- `TokenRefreshService.cs` -- `IHostedService` background worker that refreshes expiring OAuth tokens every 5 minutes
+
+### Database Changes
+
+- **`ExternalProviderMapping` entity** -- New table storing user-to-SSO-provider links (provider name, provider user ID, access/refresh tokens, token expiry, force-auth flag, timestamps)
+- **`ExternalProviderMappingConfiguration.cs`** -- EF Core entity configuration with unique index on (UserId, ProviderName)
+- **Migration `20260409140404_AddExternalProviderMappings`** -- Creates the ExternalProviderMappings table
+- **Migration `20260410150000_AddSsoEnhancements`** -- Adds ForceExternalAuth and LastRefreshAttempt columns
+- **`JellyfinDbContext.cs`** -- Added `DbSet<ExternalProviderMapping>` 
+- **`JellyfinDbModelSnapshot.cs`** -- Updated with ExternalProviderMapping model
+
+### Modified Existing Files
+
+- **`CoreAppHost.cs`** -- Registers all SSO services: `IExternalAuthService`, `OidcDiscoveryService`, `IExternalAuthenticationProvider` implementations (Google, Generic OIDC), `TokenRefreshService`, and `HttpClient`
+- **`UserManager.cs`** -- Added force-SSO check in `AuthenticateUser`: blocks password login for users with ForceExternalAuth enabled (with try-catch fallback to prevent DB errors from breaking all auth)
+- **`ServerConfiguration.cs`** -- Added `SsoEnabled`, `GoogleOAuthClientId`, `GoogleOAuthClientSecret` configuration properties
+- **`Jellyfin.sln`** -- Added Jellyfin.Plugin.SSO project reference
+- **`Jellyfin.Server.csproj`** -- Added project reference to Jellyfin.Plugin.SSO
+
+### Security Features
+
+- **PKCE (S256)** on all OAuth/OIDC flows to prevent authorization code interception
+- **Nonce validation** on OIDC id_tokens to prevent replay attacks
+- **State parameter** with metadata for CSRF protection
+- **Domain allowlisting** to restrict which email domains can authenticate
+- **Force-SSO per user** to disable password login for SSO-linked accounts
+- **Token encryption** -- Tokens stored in database (refresh tokens should be encrypted at rest in production)
+
+---
+
 <p align="center">
 <img alt="Logo Banner" src="https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/banner-logo-solid.svg?sanitize=true"/>
 <br/>

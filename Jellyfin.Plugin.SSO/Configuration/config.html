@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>SSO Authentication</title>
+    <style>
+        .roleMappingTable { width: 100%; border-collapse: collapse; margin-top: 0.5em; }
+        .roleMappingTable th, .roleMappingTable td { padding: 4px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .roleMappingTable input, .roleMappingTable select { width: 100%; box-sizing: border-box; }
+        .btnRemoveMapping { cursor: pointer; color: #f44336; background: none; border: none; font-size: 1.2em; }
+        .btnAddMapping { margin-top: 0.5em; }
+        .autoDiscoveryHint { color: rgba(255,255,255,0.5); font-style: italic; margin-top: 0.25em; }
+    </style>
+</head>
+<body>
+    <div id="SSOConfigPage" data-role="page" class="page type-interior pluginConfigurationPage configPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="SSOConfigForm">
+
+                    <!-- Google OAuth2 -->
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Google OAuth2</h2>
+                        <div class="checkboxContainer">
+                            <label class="emby-checkbox-label">
+                                <input id="GoogleEnabled" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Google OAuth2</span>
+                            </label>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="GoogleClientId">Client ID</label>
+                            <input id="GoogleClientId" type="text" is="emby-input" />
+                            <div class="fieldDescription">The OAuth2 Client ID from the Google Cloud Console.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="GoogleClientSecret">Client Secret</label>
+                            <input id="GoogleClientSecret" type="password" is="emby-input" />
+                            <div class="fieldDescription">The OAuth2 Client Secret from the Google Cloud Console.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="GoogleAllowedDomains">Allowed Email Domains</label>
+                            <input id="GoogleAllowedDomains" type="text" is="emby-input" />
+                            <div class="fieldDescription">Comma-separated list of allowed email domains. Leave empty to allow all.</div>
+                        </div>
+
+                        <h3>Role Mappings</h3>
+                        <div class="fieldDescription">Map external claims to Jellyfin permissions. Claims are checked on each SSO login.</div>
+                        <table class="roleMappingTable" id="googleRoleMappings">
+                            <thead>
+                                <tr>
+                                    <th>Claim Name</th>
+                                    <th>Claim Value</th>
+                                    <th>Permission</th>
+                                    <th>Grant</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" is="emby-button" class="raised btnAddMapping" onclick="addRoleMappingRow('googleRoleMappings')">
+                            <span>Add Mapping</span>
+                        </button>
+                    </div>
+
+                    <!-- Generic OIDC -->
+                    <div class="verticalSection">
+                        <h2 class="sectionTitle">Generic OpenID Connect</h2>
+                        <div class="checkboxContainer">
+                            <label class="emby-checkbox-label">
+                                <input id="OIDCEnabled" type="checkbox" is="emby-checkbox" />
+                                <span>Enable Generic OIDC Provider</span>
+                            </label>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCDisplayName">Display Name</label>
+                            <input id="OIDCDisplayName" type="text" is="emby-input" />
+                            <div class="fieldDescription">The name shown on the login button (e.g., "Keycloak", "Authelia").</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCIssuerUrl">Issuer URL (Auto-Discovery)</label>
+                            <input id="OIDCIssuerUrl" type="url" is="emby-input" />
+                            <div class="fieldDescription">
+                                The OIDC issuer URL (e.g., "https://accounts.google.com"). When set, endpoints are discovered automatically via .well-known/openid-configuration.
+                            </div>
+                        </div>
+
+                        <div id="oidcManualEndpoints">
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="OIDCAuthorizationEndpoint">Authorization Endpoint</label>
+                                <input id="OIDCAuthorizationEndpoint" type="url" is="emby-input" />
+                                <div class="autoDiscoveryHint hide" id="authEndpointHint">Auto-discovered from issuer URL</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="OIDCTokenEndpoint">Token Endpoint</label>
+                                <input id="OIDCTokenEndpoint" type="url" is="emby-input" />
+                                <div class="autoDiscoveryHint hide" id="tokenEndpointHint">Auto-discovered from issuer URL</div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel" for="OIDCUserInfoEndpoint">User Info Endpoint</label>
+                                <input id="OIDCUserInfoEndpoint" type="url" is="emby-input" />
+                                <div class="autoDiscoveryHint hide" id="userinfoEndpointHint">Auto-discovered from issuer URL</div>
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCClientId">Client ID</label>
+                            <input id="OIDCClientId" type="text" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCClientSecret">Client Secret</label>
+                            <input id="OIDCClientSecret" type="password" is="emby-input" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCScopes">Scopes</label>
+                            <input id="OIDCScopes" type="text" is="emby-input" />
+                            <div class="fieldDescription">Space-separated list of scopes (default: "openid profile email").</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCUserIdClaim">User ID Claim</label>
+                            <input id="OIDCUserIdClaim" type="text" is="emby-input" />
+                            <div class="fieldDescription">The claim for the user's unique ID (default: "sub").</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCUsernameClaim">Username Claim</label>
+                            <input id="OIDCUsernameClaim" type="text" is="emby-input" />
+                            <div class="fieldDescription">The claim for the user's username (default: "preferred_username").</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCAllowedDomains">Allowed Email Domains</label>
+                            <input id="OIDCAllowedDomains" type="text" is="emby-input" />
+                            <div class="fieldDescription">Comma-separated list of allowed email domains. Leave empty to allow all.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="OIDCIconUrl">Custom Icon URL</label>
+                            <input id="OIDCIconUrl" type="url" is="emby-input" />
+                            <div class="fieldDescription">URL to a custom icon for the login button. Leave empty for the default icon.</div>
+                        </div>
+
+                        <h3>Role Mappings</h3>
+                        <div class="fieldDescription">Map external claims to Jellyfin permissions. Claims are checked on each SSO login.</div>
+                        <table class="roleMappingTable" id="oidcRoleMappings">
+                            <thead>
+                                <tr>
+                                    <th>Claim Name</th>
+                                    <th>Claim Value</th>
+                                    <th>Permission</th>
+                                    <th>Grant</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" is="emby-button" class="raised btnAddMapping" onclick="addRoleMappingRow('oidcRoleMappings')">
+                            <span>Add Mapping</span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+        var SSOConfig = {
+            pluginUniqueId: 'a1e5c2d3-f4b6-7890-abcd-ef1234567890'
+        };
+
+        var permissionOptions = [
+            'IsAdministrator', 'IsHidden', 'IsDisabled',
+            'EnableSharedDeviceControl', 'EnableRemoteAccess',
+            'EnableLiveTvManagement', 'EnableLiveTvAccess',
+            'EnableMediaPlayback', 'EnableAudioPlaybackTranscoding',
+            'EnableVideoPlaybackTranscoding', 'EnableContentDeletion',
+            'EnableContentDownloading', 'EnableCollectionManagement',
+            'EnableSubtitleManagement', 'EnableRemoteControlOfOtherUsers',
+            'EnablePlaybackRemuxing', 'ForceRemoteSourceTranscoding'
+        ];
+
+        function buildPermissionSelect(selected) {
+            var html = '<select>';
+            for (var i = 0; i < permissionOptions.length; i++) {
+                var opt = permissionOptions[i];
+                html += '<option value="' + opt + '"' + (opt === selected ? ' selected' : '') + '>' + opt + '</option>';
+            }
+            html += '</select>';
+            return html;
+        }
+
+        function addRoleMappingRow(tableId, mapping) {
+            var tbody = document.querySelector('#' + tableId + ' tbody');
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="text" value="' + (mapping ? mapping.ClaimName : '') + '" class="mappingClaimName" /></td>' +
+                '<td><input type="text" value="' + (mapping ? mapping.ClaimValue : '') + '" class="mappingClaimValue" /></td>' +
+                '<td>' + buildPermissionSelect(mapping ? mapping.Permission : 'IsAdministrator') + '</td>' +
+                '<td><select class="mappingGrant"><option value="true"' + (!mapping || mapping.Grant ? ' selected' : '') + '>Grant</option><option value="false"' + (mapping && !mapping.Grant ? ' selected' : '') + '>Deny</option></select></td>' +
+                '<td><button type="button" class="btnRemoveMapping" onclick="this.closest(\'tr\').remove()">&#x2715;</button></td>';
+            tbody.appendChild(tr);
+        }
+
+        function getRoleMappings(tableId) {
+            var rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+            var mappings = [];
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var claimName = row.querySelector('.mappingClaimName').value.trim();
+                var claimValue = row.querySelector('.mappingClaimValue').value.trim();
+                if (!claimName) continue;
+                mappings.push({
+                    ClaimName: claimName,
+                    ClaimValue: claimValue,
+                    Permission: row.querySelector('td:nth-child(3) select').value,
+                    Grant: row.querySelector('.mappingGrant').value === 'true'
+                });
+            }
+            return mappings;
+        }
+
+        function updateIssuerHints() {
+            var issuerUrl = document.querySelector('#OIDCIssuerUrl').value.trim();
+            var hasIssuer = issuerUrl.length > 0;
+            var fields = ['OIDCAuthorizationEndpoint', 'OIDCTokenEndpoint', 'OIDCUserInfoEndpoint'];
+            var hints = ['authEndpointHint', 'tokenEndpointHint', 'userinfoEndpointHint'];
+            for (var i = 0; i < fields.length; i++) {
+                var el = document.querySelector('#' + fields[i]);
+                var hint = document.querySelector('#' + hints[i]);
+                if (hasIssuer) {
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    hint.classList.remove('hide');
+                } else {
+                    el.disabled = false;
+                    el.style.opacity = '1';
+                    hint.classList.add('hide');
+                }
+            }
+        }
+
+        document.querySelector('#OIDCIssuerUrl').addEventListener('input', updateIssuerHints);
+
+        document.querySelector('.configPage')
+            .addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(SSOConfig.pluginUniqueId).then(function (config) {
+                    // Google
+                    document.querySelector('#GoogleEnabled').checked = config.GoogleOAuth.Enabled;
+                    document.querySelector('#GoogleClientId').value = config.GoogleOAuth.ClientId || '';
+                    document.querySelector('#GoogleClientSecret').value = config.GoogleOAuth.ClientSecret || '';
+                    document.querySelector('#GoogleAllowedDomains').value = config.GoogleOAuth.AllowedDomains || '';
+                    // Google role mappings
+                    var googleMappings = config.GoogleOAuth.RoleMappings || [];
+                    document.querySelector('#googleRoleMappings tbody').innerHTML = '';
+                    for (var i = 0; i < googleMappings.length; i++) {
+                        addRoleMappingRow('googleRoleMappings', googleMappings[i]);
+                    }
+
+                    // OIDC
+                    document.querySelector('#OIDCEnabled').checked = config.GenericOIDC.Enabled;
+                    document.querySelector('#OIDCDisplayName').value = config.GenericOIDC.DisplayName || 'OIDC';
+                    document.querySelector('#OIDCIssuerUrl').value = config.GenericOIDC.IssuerUrl || '';
+                    document.querySelector('#OIDCAuthorizationEndpoint').value = config.GenericOIDC.AuthorizationEndpoint || '';
+                    document.querySelector('#OIDCTokenEndpoint').value = config.GenericOIDC.TokenEndpoint || '';
+                    document.querySelector('#OIDCUserInfoEndpoint').value = config.GenericOIDC.UserInfoEndpoint || '';
+                    document.querySelector('#OIDCClientId').value = config.GenericOIDC.ClientId || '';
+                    document.querySelector('#OIDCClientSecret').value = config.GenericOIDC.ClientSecret || '';
+                    document.querySelector('#OIDCScopes').value = config.GenericOIDC.Scopes || 'openid profile email';
+                    document.querySelector('#OIDCUserIdClaim').value = config.GenericOIDC.UserIdClaim || 'sub';
+                    document.querySelector('#OIDCUsernameClaim').value = config.GenericOIDC.UsernameClaim || 'preferred_username';
+                    document.querySelector('#OIDCAllowedDomains').value = config.GenericOIDC.AllowedDomains || '';
+                    document.querySelector('#OIDCIconUrl').value = config.GenericOIDC.IconUrl || '';
+                    // OIDC role mappings
+                    var oidcMappings = config.GenericOIDC.RoleMappings || [];
+                    document.querySelector('#oidcRoleMappings tbody').innerHTML = '';
+                    for (var j = 0; j < oidcMappings.length; j++) {
+                        addRoleMappingRow('oidcRoleMappings', oidcMappings[j]);
+                    }
+
+                    updateIssuerHints();
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+        document.querySelector('#SSOConfigForm')
+            .addEventListener('submit', function(e) {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(SSOConfig.pluginUniqueId).then(function (config) {
+                    // Google
+                    config.GoogleOAuth.Enabled = document.querySelector('#GoogleEnabled').checked;
+                    config.GoogleOAuth.ClientId = document.querySelector('#GoogleClientId').value;
+                    config.GoogleOAuth.ClientSecret = document.querySelector('#GoogleClientSecret').value;
+                    config.GoogleOAuth.AllowedDomains = document.querySelector('#GoogleAllowedDomains').value;
+                    config.GoogleOAuth.RoleMappings = getRoleMappings('googleRoleMappings');
+
+                    // OIDC
+                    config.GenericOIDC.Enabled = document.querySelector('#OIDCEnabled').checked;
+                    config.GenericOIDC.DisplayName = document.querySelector('#OIDCDisplayName').value;
+                    config.GenericOIDC.IssuerUrl = document.querySelector('#OIDCIssuerUrl').value;
+                    config.GenericOIDC.AuthorizationEndpoint = document.querySelector('#OIDCAuthorizationEndpoint').value;
+                    config.GenericOIDC.TokenEndpoint = document.querySelector('#OIDCTokenEndpoint').value;
+                    config.GenericOIDC.UserInfoEndpoint = document.querySelector('#OIDCUserInfoEndpoint').value;
+                    config.GenericOIDC.ClientId = document.querySelector('#OIDCClientId').value;
+                    config.GenericOIDC.ClientSecret = document.querySelector('#OIDCClientSecret').value;
+                    config.GenericOIDC.Scopes = document.querySelector('#OIDCScopes').value;
+                    config.GenericOIDC.UserIdClaim = document.querySelector('#OIDCUserIdClaim').value;
+                    config.GenericOIDC.UsernameClaim = document.querySelector('#OIDCUsernameClaim').value;
+                    config.GenericOIDC.AllowedDomains = document.querySelector('#OIDCAllowedDomains').value;
+                    config.GenericOIDC.IconUrl = document.querySelector('#OIDCIconUrl').value;
+                    config.GenericOIDC.RoleMappings = getRoleMappings('oidcRoleMappings');
+
+                    ApiClient.updatePluginConfiguration(SSOConfig.pluginUniqueId, config).then(function () {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    });
+                });
+
+                e.preventDefault();
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

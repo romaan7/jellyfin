@@ -49,6 +49,7 @@ namespace Jellyfin.Server.Implementations.Users
         private readonly DefaultAuthenticationProvider _defaultAuthenticationProvider;
         private readonly DefaultPasswordResetProvider _defaultPasswordResetProvider;
         private readonly IServerConfigurationManager _serverConfigurationManager;
+        private readonly IExternalAuthService _externalAuthService;
 
         private readonly IDictionary<Guid, User> _users;
 
@@ -64,6 +65,7 @@ namespace Jellyfin.Server.Implementations.Users
         /// <param name="serverConfigurationManager">The system config manager.</param>
         /// <param name="passwordResetProviders">The password reset providers.</param>
         /// <param name="authenticationProviders">The authentication providers.</param>
+        /// <param name="externalAuthService">The external authentication service.</param>
         public UserManager(
             IDbContextFactory<JellyfinDbContext> dbProvider,
             IEventManager eventManager,
@@ -73,7 +75,8 @@ namespace Jellyfin.Server.Implementations.Users
             ILogger<UserManager> logger,
             IServerConfigurationManager serverConfigurationManager,
             IEnumerable<IPasswordResetProvider> passwordResetProviders,
-            IEnumerable<IAuthenticationProvider> authenticationProviders)
+            IEnumerable<IAuthenticationProvider> authenticationProviders,
+            IExternalAuthService externalAuthService)
         {
             _dbProvider = dbProvider;
             _eventManager = eventManager;
@@ -82,6 +85,7 @@ namespace Jellyfin.Server.Implementations.Users
             _imageProcessor = imageProcessor;
             _logger = logger;
             _serverConfigurationManager = serverConfigurationManager;
+            _externalAuthService = externalAuthService;
 
             _passwordResetProviders = passwordResetProviders.ToList();
             _authenticationProviders = authenticationProviders.ToList();
@@ -446,6 +450,30 @@ namespace Jellyfin.Server.Implementations.Users
                     username,
                     remoteEndPoint);
                 throw new AuthenticationException("Invalid username or password entered.");
+            }
+
+            // Block password login for users that require SSO authentication
+            if (success)
+            {
+                try
+                {
+                    if (await _externalAuthService.IsUserForcedExternalAuthAsync(user.Id).ConfigureAwait(false))
+                    {
+                        _logger.LogInformation(
+                            "Authentication request for {UserName} denied: this account requires SSO login (IP: {IP}).",
+                            username,
+                            remoteEndPoint);
+                        throw new AuthenticationException("This account requires SSO login. Please use your linked SSO provider to sign in.");
+                    }
+                }
+                catch (AuthenticationException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to check SSO force-auth status for user {UserName}. Allowing password login.", username);
+                }
             }
 
             if (user.HasPermission(PermissionKind.IsDisabled))

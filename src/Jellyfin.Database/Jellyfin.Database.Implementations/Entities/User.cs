@@ -36,7 +36,7 @@ namespace Jellyfin.Database.Implementations.Entities
             // Groups = new HashSet<Group>();
             Permissions = new HashSet<Permission>();
             Preferences = new HashSet<Preference>();
-            // ProviderMappings = new HashSet<ProviderMapping>();
+            ExternalProviderMappings = new HashSet<ExternalProviderMapping>();
 
             // Set default values
             Id = Guid.NewGuid();
@@ -318,12 +318,10 @@ namespace Jellyfin.Database.Implementations.Entities
         [ForeignKey("Permission_Permissions_Guid")]
         public virtual ICollection<Permission> Permissions { get; private set; }
 
-        /*
         /// <summary>
-        /// Gets the list of provider mappings this user has.
+        /// Gets the list of external provider mappings this user has.
         /// </summary>
-        public virtual ICollection<ProviderMapping> ProviderMappings { get; private set; }
-        */
+        public virtual ICollection<ExternalProviderMapping> ExternalProviderMappings { get; private set; }
 
         /// <summary>
         /// Gets the list of preferences this user has.

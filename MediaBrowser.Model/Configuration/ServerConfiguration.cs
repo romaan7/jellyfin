@@ -288,4 +288,20 @@ public class ServerConfiguration : BaseApplicationConfiguration
     /// Gets or sets a value indicating whether old authorization methods are allowed.
     /// </summary>
     public bool EnableLegacyAuthorization { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether external (SSO) authentication is enabled.
+    /// </summary>
+    public bool EnableExternalAuth { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether new users can be created via external authentication.
+    /// </summary>
+    public bool AllowExternalUserCreation { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether existing users can be automatically linked
+    /// to an external provider account by matching username.
+    /// </summary>
+    public bool AllowAutoLinkByEmail { get; set; }
 }

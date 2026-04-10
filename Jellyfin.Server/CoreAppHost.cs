@@ -8,7 +8,10 @@ using Jellyfin.Database.Implementations;
 using Jellyfin.Drawing;
 using Jellyfin.Drawing.Skia;
 using Jellyfin.LiveTv;
+using Jellyfin.Plugin.SSO.Discovery;
+using Jellyfin.Plugin.SSO.Providers;
 using Jellyfin.Server.Implementations.Activity;
+using Jellyfin.Server.Implementations.Authentication;
 using Jellyfin.Server.Implementations.Devices;
 using Jellyfin.Server.Implementations.Events;
 using Jellyfin.Server.Implementations.Extensions;
@@ -95,6 +98,12 @@ namespace Jellyfin.Server
             serviceCollection.AddSingleton<IWebSocketListener, SessionInfoWebSocketListener>();
 
             serviceCollection.AddSingleton<IAuthorizationContext, AuthorizationContext>();
+            serviceCollection.AddSingleton<IExternalAuthService, ExternalAuthService>();
+            serviceCollection.AddSingleton<OidcDiscoveryService>();
+            serviceCollection.AddSingleton<IExternalAuthenticationProvider, GoogleOAuthProvider>();
+            serviceCollection.AddSingleton<IExternalAuthenticationProvider, GenericOIDCProvider>();
+            serviceCollection.AddHostedService<TokenRefreshService>();
+            serviceCollection.AddHttpClient();
 
             serviceCollection.AddScoped<IAuthenticationManager, AuthenticationManager>();
 
@@ -125,6 +134,9 @@ namespace Jellyfin.Server
 
             // Jellyfin.LiveTv
             yield return typeof(LiveTvManager).Assembly;
+
+            // Jellyfin.Plugin.SSO
+            yield return typeof(Jellyfin.Plugin.SSO.Plugin).Assembly;
         }
     }
 }

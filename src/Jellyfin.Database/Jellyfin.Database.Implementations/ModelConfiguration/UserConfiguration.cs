@@ -48,6 +48,12 @@ namespace Jellyfin.Database.Implementations.ModelConfiguration
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
+                .HasMany(u => u.ExternalProviderMappings)
+                .WithOne(m => m.User)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
                 .HasIndex(entity => entity.Username)
                 .IsUnique();
         }
